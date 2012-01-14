@@ -6,7 +6,6 @@ class ShopifyAuthComponent extends Component {
 
 	public $shop_domain;
 	public $token;
-
 	function initialize(&$controller, $settings = array()) {
 		$authorized = false;
 		if ($this->Session->check('shopify.shop_domain')) {
@@ -19,18 +18,19 @@ class ShopifyAuthComponent extends Component {
 				$this->shop_domain = $shop_domain;
 				$this->token = $token;
 			} else {
-				logout();
+				$this->logout();
 			}
 		}
 		if (!$authorized) {
 			if (isset($_GET['shop']) && isset($_GET['t']) && isset($_GET['signature']) && isset($_GET['timestamp'])) {
-	 			$shop_domain = $_GET['shop_domain'];
-				$token = $_GET['token'];
+	 			$shop_domain = $_GET['shop'];
+				$token = $_GET['t'];
 				$signature = $_GET['signature'];
 				$timestamp = $_GET['timestamp'];
 				$authorized = $this->_isAuthorized($shop_domain, $token, $signature, $timestamp);
 				if ($authorized) {
-					$this->Session->write('shopify.shopify_domain', $shop_domain);
+					$this->logout();
+					$this->Session->write('shopify.shop_domain', $shop_domain);
 					$this->Session->write('shopify.token', $token);
 					$this->Session->write('shopify.signature', $signature);
 					$this->Session->write('shopify.timestamp', $timestamp);
@@ -39,16 +39,14 @@ class ShopifyAuthComponent extends Component {
 				}
 			}
 		}
-
-		if (!$authorized && $controller->name != "Install")
+		if (!$authorized && (empty($controller->name) || $controller->name != "Install"))
 			$controller->redirect(array('controller'=>'install', 'plugin'=>'shopify'));
 	}
-	
 	public function getAppInstallUrl($shop_domain) {
 		return "http://" . $shop_domain . "/admin/api/auth?api_key=" . Configure::read('api_key');
 	}
 	
-	private function _isAuthorized($shop_domain, $token, $timestamp, $signature) {
+	private function _isAuthorized($shop_domain, $token, $signature, $timestamp) {
 		$secret = Configure::read('shared_secret');
 		return (md5($secret . "shop=" . $shop_domain . "t=" . $token . "timestamp=" . $timestamp) === $signature);
 	}
