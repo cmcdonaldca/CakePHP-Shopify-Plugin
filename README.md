@@ -27,12 +27,11 @@ now you need edit the config file with your Shopify App API info
 load the plugin and configuration into your CakePHP App
 
 * open app/Config/bootstrap.php and add this at the bottom:
+
 ```php
 CakePlugin::load('Shopify');
-
 Configure::load('Shopify.shopify');
 ```
-
 
 ## Usage
 
@@ -54,3 +53,7 @@ Ability to skip Shopify Authentication on certain controllers and views.  Curren
 				'Shopify.ShopifyAPI');
 
 ```
+
+## Special Thanks
+
+Special thanks to Sandeep for his initial release of the lightweight Shopify API client (https://github.com/sandeepshetty/shopify.php) that is used and slightly modified in this repository.
