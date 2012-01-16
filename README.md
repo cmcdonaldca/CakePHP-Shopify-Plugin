@@ -29,6 +29,7 @@ load the plugin and configuration into your CakePHP App
 * open app/Config/bootstrap.php and add this at the bottom:
 ```php
 CakePlugin::load('Shopify');
+
 Configure::load('Shopify.shopify');
 ```
 
