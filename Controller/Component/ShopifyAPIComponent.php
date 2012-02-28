@@ -1,7 +1,7 @@
 <?php
 class ShopifyAPIComponent extends Component {
 	var $components = array('ShopifyAuth');
-	private $shop_domain;
+	public $shop_domain;
 	private $token;
 	private $api_key;
 	private $secret;
