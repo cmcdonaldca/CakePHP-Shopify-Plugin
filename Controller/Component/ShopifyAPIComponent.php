@@ -1,8 +1,6 @@
 <?php
 class ShopifyAPIComponent extends Component {
 	var $components = array('ShopifyAuth');
-	public $shop_domain;
-	private $token;
 	private $api_key;
 	private $secret;
 	private $is_private_app;
@@ -10,17 +8,14 @@ class ShopifyAPIComponent extends Component {
 
 	public function __construct(&$controller, $settings=array()) {
 		parent::__construct($controller, $settings);
-
 		$this->name = "ShopifyAPI";
-		$this->shop_domain = $this->ShopifyAuth->shop_domain;
-		$this->token = $this->ShopifyAuth->token;
 		$this->api_key = Configure::read('api_key');
 		$this->secret = Configure::read('shared_secret');
 		$this->is_private_app = Configure::read('is_private_app');
 	}
 
 	public function isAuthorized() {
-		return strlen($this->shop_domain) > 0 && strlen($this->token) > 0;
+		return strlen($this->ShopifyAuth->shop_domain) > 0 && strlen($this->ShopifyAuth->token) > 0;
 	}
 	
 	public function callsMade()
@@ -42,18 +37,15 @@ class ShopifyAPIComponent extends Component {
 	{
 		if (!$this->isAuthorized())
 			return;
-
-		$password = $this->is_private_app ? $this->secret : md5($this->secret.$this->token);
-		$baseurl = "https://{$this->api_key}:$password@{$this->shop_domain}/";
+		$password = $this->is_private_app ? $this->secret : md5($this->secret.$this->ShopifyAuth->token);
+		$baseurl = "https://{$this->api_key}:$password@{$this->ShopifyAuth->shop_domain}/";
 	
 		$url = $baseurl.ltrim($path, '/');
 		$query = in_array($method, array('GET','DELETE')) ? $params : array();
 		$payload = in_array($method, array('POST','PUT')) ? stripslashes(json_encode($params)) : array();
 		$request_headers = in_array($method, array('POST','PUT')) ? array("Content-Type: application/json; charset=utf-8", 'Expect:') : array();
-
 		$response = $this->curlHttpApiRequest($method, $url, $query, $payload, $request_headers);
 		$response = json_decode($response, true);
-
 		if (isset($response['errors']) or ($this->last_response_headers['http_status_code'] >= 400))
 			throw new ShopifyApiException($method, $path, $params, $this->last_response_headers, $response);
 
