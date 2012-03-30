@@ -35,13 +35,50 @@ Configure::load('Shopify.shopify');
 
 ## Usage
 
-Simply add this line to your AppController (or specific controller)
+### Sample 1 - In your App Controller
+Simply add this line to your AppController and it can be used in all Controllers
 
 ```php
 	public $components = array('Shopify.ShopifyAuth', 'Shopify.ShopifyAPI');
 ```
 
-Now, this plugin will automatically handle the shopify Authentication and redirect to an install form.
+### Sample 2 - In a specific Controller
+```php
+<?php
+App::uses('AppController', 'Controller');
+class SimpleController extends AppController {
+
+	public $name = 'Simple';
+	public $components = array('RequestHandler', 'Shopify.ShopifyAuth', 'Shopify.ShopifyAPI');
+	public function beforeRender() {
+    		parent::beforeRender();
+		// before rendering the views, check how many API calls we made
+		$this->set('shopifyCallsMade', $this->ShopifyAPI->callsMade());
+		$this->set('shopifyCallLimit', $this->ShopifyAPI->callLimit());
+    	}
+
+	public function index() {
+		try {
+			// I only want the id and title of the collections
+			$fields = "fields=id,title";
+			// get list of collections
+			$custom_collections = $this->ShopifyAPI->call('GET', "/admin/custom_collections.json", $fields);
+			$this->set('collections', $custom_collections);
+
+		} catch (Exception $e) {
+			
+			// nothing fancy here
+			echo "<pre>|";
+			print_r($e);
+			echo "</pre>";
+		}
+		
+	}
+}
+```
+
+Now, this plugin will automatically handle the shopify Authentication and redirect to an install form.  Did you get that?  You don't have to worry about authentication.  It's all handled.  All you have to do is start making API calls.
+
 
 ## Coming Soon
 
