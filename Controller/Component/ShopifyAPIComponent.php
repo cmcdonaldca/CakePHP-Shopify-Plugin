@@ -124,7 +124,7 @@ class ShopifyAPIComponent extends Component {
 	{
 		if ($this->last_response_headers == null)
 		{
-			throw new Exception('Cannot be called before an API call.');
+			return 0;
 		}
 		$params = explode('/', $this->last_response_headers['http_x_shopify_shop_api_call_limit']);
 		return (int) $params[$index];
