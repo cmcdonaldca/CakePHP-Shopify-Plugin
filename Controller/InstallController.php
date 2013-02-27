@@ -10,8 +10,9 @@ class InstallController extends AppController {
 	public function go() {
 		if (empty($this->data['shop_domain'])) {
 			$this->render('index');
-		} else {
-			$auth_url = $this->ShopifyAuth->getAppInstallUrl($this->data['shop_domain']);
+    } else {
+      $redirect_url = Router::url(array('controller'=> 'install', 'action' => 'index', 'plugin' => 'shopify'), true);
+			$auth_url = $this->ShopifyAuth->getAuthorizeUrl($this->data['shop_domain'], $redirect_url);
 			$this->redirect($auth_url);
 		}
 	}

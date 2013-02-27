@@ -1,6 +1,6 @@
 <?php
 class ShopifyAPIComponent extends Component {
-	var $components = array('ShopifyAuth');
+	var $components = array('ShopifyAuth', 'Shopify.Curl');
 	private $api_key;
 	private $secret;
 	private $is_private_app;
@@ -11,8 +11,12 @@ class ShopifyAPIComponent extends Component {
 		$this->name = "ShopifyAPI";
 		$this->api_key = Configure::read('api_key');
 		$this->secret = Configure::read('shared_secret');
-		$this->is_private_app = Configure::read('is_private_app');
+    $this->is_private_app = Configure::read('is_private_app');
 	}
+
+  public function getShopDomain() {
+    return $this->ShopifyAuth->shop_domain;
+  }
 
 	public function isAuthorized() {
 		return strlen($this->ShopifyAuth->shop_domain) > 0 && strlen($this->ShopifyAuth->token) > 0;
@@ -43,81 +47,16 @@ class ShopifyAPIComponent extends Component {
 		$url = $baseurl.ltrim($path, '/');
 		$query = in_array($method, array('GET','DELETE')) ? $params : array();
 		$payload = in_array($method, array('POST','PUT')) ? stripslashes(json_encode($params)) : array();
-		$request_headers = in_array($method, array('POST','PUT')) ? array("Content-Type: application/json; charset=utf-8", 'Expect:') : array();
-		$response = $this->curlHttpApiRequest($method, $url, $query, $payload, $request_headers);
-		$response = json_decode($response, true);
+    $request_headers = in_array($method, array('POST','PUT')) ? array("Content-Type: application/json; charset=utf-8", 'Expect:') : array();
+    $request_headers[] = 'X-Shopify-Access-Token: ' . $this->ShopifyAuth->token;
+		list($response_body, $response_headers) = $this->Curl->HttpRequest($method, $url, $query, $payload, $request_headers);
+    $this->last_response_headers = $response_headers;
+    $response = json_decode($response_body, true);
+
 		if (isset($response['errors']) or ($this->last_response_headers['http_status_code'] >= 400))
 			throw new ShopifyApiException($method, $path, $params, $this->last_response_headers, $response);
 
 		return (is_array($response) and (count($response) > 0)) ? array_shift($response) : $response;
-	}
-
-	private function curlHttpApiRequest($method, $url, $query='', $payload='', $request_headers=array())
-	{
-		$url = $this->curlAppendQuery($url, $query);
-		$ch = curl_init($url);
-		$this->curlSetopts($ch, $method, $payload, $request_headers);
-		$response = curl_exec($ch);
-		$errno = curl_errno($ch);
-		$error = curl_error($ch);
-		curl_close($ch);
-
-		if ($errno) throw new ShopifyCurlException($error, $errno);
-
-		list($message_headers, $message_body) = preg_split("/\r\n\r\n|\n\n|\r\r/", $response, 2);
-		$this->last_response_headers = $this->curlParseHeaders($message_headers);
-
-		return $message_body;
-	}
-
-	private function curlAppendQuery($url, $query)
-	{
-		if (empty($query)) return $url;
-		if (is_array($query)) return "$url?".http_build_query($query);
-		else return "$url?$query";
-	}
-
-	private function curlSetopts($ch, $method, $payload, $request_headers)
-	{
-		curl_setopt($ch, CURLOPT_HEADER, true);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-		curl_setopt($ch, CURLOPT_USERAGENT, 'HAC');
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-		if ('GET' == $method)
-		{
-			curl_setopt($ch, CURLOPT_HTTPGET, true);
-		}
-		else
-		{
-			curl_setopt ($ch, CURLOPT_CUSTOMREQUEST, $method);
-			if (!empty($request_headers)) curl_setopt($ch, CURLOPT_HTTPHEADER, $request_headers);
-			if (!empty($payload))
-			{
-				if (is_array($payload)) $payload = http_build_query($payload);
-				curl_setopt ($ch, CURLOPT_POSTFIELDS, $payload);
-			}
-		}
-	}
-
-	private function curlParseHeaders($message_headers)
-	{
-		$header_lines = preg_split("/\r\n|\n|\r/", $message_headers);
-		$headers = array();
-		list(, $headers['http_status_code'], $headers['http_status_message']) = explode(' ', trim(array_shift($header_lines)), 3);
-		foreach ($header_lines as $header_line)
-		{
-			list($name, $value) = explode(':', $header_line, 2);
-			$name = strtolower($name);
-			$headers[$name] = trim($value);
-		}
-
-		return $headers;
 	}
 	
 	private function shopApiCallLimitParam($index)
@@ -130,7 +69,7 @@ class ShopifyAPIComponent extends Component {
 		return (int) $params[$index];
 	}	
 }
-class ShopifyCurlException extends Exception { }
+
 class ShopifyApiException extends Exception
 {
 	protected $method;
@@ -156,7 +95,5 @@ class ShopifyApiException extends Exception
 	function getResponseHeaders() { return $this->response_headers; }
 	function getResponse() { return $this->response; }
 }
-
- 
 
 ?>
