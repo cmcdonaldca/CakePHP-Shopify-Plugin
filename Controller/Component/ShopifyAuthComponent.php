@@ -3,7 +3,7 @@
 class ShopifyAuthComponent extends Component {
 
   var $name = "ShopifyAuth";
-  var $components = array('Session', 'Shopify.Curl');	
+  var $components = array('Session', 'Shopify.Curl');
 
   private $_excludeCheckOnList = array(array('controller'=>'Install', 'action'=>'index'), array('controller'=>'Install', 'action'=>'go'));
 
@@ -45,7 +45,7 @@ class ShopifyAuthComponent extends Component {
       if (isset($controller->request->query['shop'])) {
         $shop_domain = $controller->request->query['shop'];
 
-        if (isset($controller->request->query['signature']) && isset($controller->request->query['timestamp'])) {
+        if (isset($controller->request->query['hmac']) && isset($controller->request->query['timestamp'])) {
           $hasCode = false;
           $signature = $controller->request->query['signature'];
           $timestamp = $controller->request->query['timestamp'];
@@ -54,7 +54,7 @@ class ShopifyAuthComponent extends Component {
             $code = $controller->request->query['code'];
             $hasCode = true;
           }
-          if ($this->_isAuthorized($shop_domain, $code, $signature, $timestamp)) {
+          if ($this->_isAuthorized($controller->request->query)) {
             $shop = $controller->Shop->findByShopDomain($shop_domain);
             $token = '';
             if ($hasCode) {
@@ -141,13 +141,26 @@ class ShopifyAuthComponent extends Component {
     $this->isAuthorized = false;
   }
 
-  private function _isAuthorized($shop_domain, $code, $signature, $timestamp) {
-    $part1 = $this->secret;
-    if ($code != '')
-      $part1 .= "code=" . $code;
-    $part1 .= "shop=" . $shop_domain . "timestamp=" . $timestamp;
+  private function _isAuthorized($query) {
+    if(!is_array($query) || empty($query['hmac']) || !is_string($query['hmac']))
+      return false;
+    $dataString = array();
+    foreach ($query as $key => $value) {
+      if($key == 'hmac' || $key == 'signature') continue;
+      $key = str_replace('=', '%3D', $key);
+      $key = str_replace('&', '%26', $key);
+      $key = str_replace('%', '%25', $key);
+      $value = str_replace('&', '%26', $value);
+      $value = str_replace('%', '%25', $value);
+      $dataString[] = $key . '=' . $value;
+    }
+    sort($dataString);
 
-    return (md5($part1) === $signature);
+    $string = implode("&", $dataString);
+    $signatureBin = mhash(MHASH_SHA256, $string, $this->secret);
+    $signature = bin2hex($signatureBin);
+
+    return $query['hmac'] == $signature;
   }
 
   private function _excludeCheckOn(&$controller) {
