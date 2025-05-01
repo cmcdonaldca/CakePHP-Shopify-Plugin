@@ -1,4 +1,4 @@
-# CakePHP Shopify Plugin
+# ARCHIVED - ~CakePHP Shopify Plugin~
 
 This is a plugin that allows you to authenticate and make API calls with Shopify.  It's perfect for building custom and public Shopify Apps.  You can quickly and easily get a Shopify up and running and use CakePHP at the same time.
 
